@@ -7,9 +7,8 @@ typedef struct line_string {
 } line_string;
 
 typedef struct array_string {
-  char *array_ptr;
   int length;
-  struct line_string* line;
+  struct line_string** lines;
 } array_string;
 
 array_string *read_file(const char *filename);
