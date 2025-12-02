@@ -22,26 +22,58 @@ int convert_char_to_number(char *line, int number_len) {
   return number;
 }
 
-int execute_operation(char dir, int number, int current_rotation) {
+// int execute_operation(char dir, int number, int current_rotation) {
 
-  int new_rotation = current_rotation;
+//   int new_rotation = current_rotation;
+//   if (dir == 'R') {
+//     new_rotation = current_rotation + number;
+//   } else if (dir == 'L') {
+//     new_rotation = current_rotation - number;
+//   }
+
+//   if (new_rotation < 0) {
+//     new_rotation += 100;
+//   }
+
+//   int sum = new_rotation % 100;
+
+//   return sum;
+// }
+
+int number_zero_clicks(char dir, int number, int current_rotation,
+                       int *zero_clicks) {
+
+  int rotation_for_sum = current_rotation;
+  int new_rotation = 0;
   if (dir == 'R') {
-    new_rotation = current_rotation + number;
+    new_rotation = rotation_for_sum + number;
   } else if (dir == 'L') {
-    new_rotation = current_rotation - number;
+    new_rotation = rotation_for_sum - number;
   }
 
-  if (new_rotation < 0) {
+  int total_rotations = abs(new_rotation / 100);
+  printf("unparsed sum, %d\n", new_rotation);
+  printf("complete rotations, %d\n", total_rotations);
+
+  if (new_rotation <= 0 && current_rotation != 0) {
+    total_rotations++;
+  }
+
+  new_rotation = new_rotation % 100;
+
+  printf("calculation, %d\n", new_rotation);
+
+  if (new_rotation <= 0) {
     new_rotation += 100;
   }
 
-  int sum = new_rotation % 100;
+  *zero_clicks = total_rotations;
 
-  return sum;
+  return new_rotation % 100;
 }
 
-// the number of times the dial is left pointing at 0 after any rotation in the
-// sequence.
+// the number of times the dial is left pointing at 0 after any rotation in
+// the sequence.
 int ex_1(array_string *result) {
 
   int current_rotation = 50;
@@ -57,18 +89,24 @@ int ex_1(array_string *result) {
     int number_len = line_data->str_len - 1;
     int number = convert_char_to_number(line, number_len);
 
-    printf("rotation: %d\n", number);
+    printf("dir %c, rotation number, %d\n", dir, number);
 
-    current_rotation = execute_operation(dir, number, current_rotation);
+    // current_rotation = execute_operation(dir, number, current_rotation);
+    int zero_clicks = 0;
+    current_rotation =
+        number_zero_clicks(dir, number, current_rotation, &zero_clicks);
 
-    printf("number of rotation that hit 0: %d\n", current_rotation);
+    printf("new rotation value: %d\n", current_rotation);
+    printf("number of rotation that hit 0: %d\n", zero_clicks);
 
-    if (current_rotation == 0) {
-      dial_point_0_counter++;
-    }
+    // if (current_rotation == 0) {
+    //   dial_point_0_counter++;
+    // }
+    //
+    dial_point_0_counter += zero_clicks;
 
     printf("----------------------------------------\n");
   }
 
   return dial_point_0_counter;
-}
+} // 2665 - has to be higher
