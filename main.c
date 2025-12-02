@@ -17,7 +17,7 @@ void free_array_struct(array_string *pointer) {
 
 
 int main() {
-  array_string *result = read_file("input/ex1.txt");
+  array_string *result = read_file("input/ex1_test.txt");
 
   printf("%d", ex_1(result));
 

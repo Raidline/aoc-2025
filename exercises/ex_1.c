@@ -13,17 +13,15 @@ int convert_char_to_number(char *line, int number_len) {
   int multiplier = 1;
 
   for (int i = 0; i < number_len - 1; i++, multiplier *= 10) {
+    number *= 10;
     int curr = (subbuff[i] - '0');
-    number += curr * multiplier;
+
+    number += curr;
   }
 
   return number;
 }
 
-// index 0 is the direction (R -> sum, L -> subtract)
-// the rest of the string is the number to apply the calculation
-// you can never go 0 it's a buffer (if 0-1 then it's 99)
-// you can never go 0 it's a buffer (if 99+1 then it's 0)
 int execute_operation(char dir, int number, int current_rotation) {
 
   int new_rotation = current_rotation;
@@ -33,7 +31,11 @@ int execute_operation(char dir, int number, int current_rotation) {
     new_rotation = current_rotation - number;
   }
 
-  int sum = ((new_rotation % 100) + 100) % 100;
+  if (new_rotation < 0) {
+    new_rotation += 100;
+  }
+
+  int sum = new_rotation % 100;
 
   return sum;
 }
@@ -42,7 +44,7 @@ int execute_operation(char dir, int number, int current_rotation) {
 // sequence.
 int ex_1(array_string *result) {
 
-  int current_rotation = 0;
+  int current_rotation = 50;
   int dial_point_0_counter = 0;
 
   for (int i = 0; i < result->length; i++) {
@@ -52,14 +54,14 @@ int ex_1(array_string *result) {
     char *line = line_data->array_ptr;
 
     char dir = line[0];
-    int number_len = line_data->str_len - 2; // counting with terminator
+    int number_len = line_data->str_len - 1;
     int number = convert_char_to_number(line, number_len);
 
     printf("rotation: %d\n", number);
 
     current_rotation = execute_operation(dir, number, current_rotation);
 
-    printf("new rotation: %d\n", current_rotation);
+    printf("number of rotation that hit 0: %d\n", current_rotation);
 
     if (current_rotation == 0) {
       dial_point_0_counter++;
@@ -69,4 +71,4 @@ int ex_1(array_string *result) {
   }
 
   return dial_point_0_counter;
-} // current try = 49;
+}
