@@ -1,29 +1,33 @@
 #include "ex_2.h"
-#include "../core/utils.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 typedef struct sequence_id {
-  int number;
+  long number;
   int number_len;
 } sequence_id;
 
-char *split_number(int number, int start, int end) {
-  int number_len = end - start;
-  char *str = malloc(number_len * (sizeof(char *)));
-  sprintf(str, "%d", number);
-  char subbuff[number_len];
-  strncpy(subbuff, str + start, end);
+char *split_number(long number, int start, int end, int number_len) {
+  int splitted_len = number_len / 2;
+  char *str = malloc(splitted_len * (sizeof(char *)));
+  sprintf(str, "%li", number);
+  char *subbuff = malloc(splitted_len / 2 * (sizeof(char *)));
 
-  return str;
+  strncpy(subbuff, str + start, end + 1);
+
+  return subbuff;
 }
 
+// 11, 22 -> invalid
 int invalid_id_value(sequence_id *id) {
-  int number = id->number;
+  long number = id->number;
 
-  char *str_left = split_number(number, 0, id->number_len / 2);
-  char *str_right = split_number(number, id->number_len / 2, id->number_len);
+  char *str_left =
+      split_number(number, 0, (id->number_len / 2) - 1, id->number_len);
+
+  char *str_right =
+      split_number(number, id->number_len / 2, id->number_len, id->number_len);
 
   int cmp = strcmp(str_left, str_right);
 
@@ -34,15 +38,15 @@ int invalid_id_value(sequence_id *id) {
   return number;
 }
 
-sequence_id *grab_id(char *line_text, int index, int currIdxPointer) {
-  int number_len = index - currIdxPointer;
-  char subbuff[index - currIdxPointer];
+sequence_id *grab_id(char *line_text, int currIndexPointer, int idx) {
+  int number_len = idx - currIndexPointer;
+  char subbuff[number_len + 1];
 
-  strncpy(subbuff, line_text + index, number_len);
+  strncpy(subbuff, line_text + currIndexPointer, number_len);
 
   sequence_id *id = malloc(sizeof(sequence_id));
 
-  id->number = convert_char_to_number(subbuff, number_len);
+  id->number = strtol(subbuff, NULL, 10);
   id->number_len = number_len;
 
   return id;
@@ -55,21 +59,23 @@ int sum_invalid_ids(sequence_id *lower_bound, sequence_id *upper_bound) {
     return 0;
   }
 
-  int sum = 0;
+  long sum = 0;
 
-  int lower_number = lower_bound->number;
-  int upper_number = upper_bound->number;
+  long lower_number = lower_bound->number;
+  long upper_number = upper_bound->number;
 
-  sum += invalid_id_value(lower_bound);
-  sum += invalid_id_value(upper_bound);
+  if (lower_bound->number_len % 2 == 0) {
+    sum += invalid_id_value(lower_bound);
+  }
 
-  for (int number = lower_number; number <= upper_number; number++) {
+  if (upper_bound->number_len % 2 == 0) {
+    sum += invalid_id_value(upper_bound);
+  }
 
-      //todo: create struct for this number and len -> then pass it to the function
+  for (long number = lower_number + 1; number <= upper_number - 1; number++) {
+    char str[20];
 
-    char str[] = {};
-
-    sprintf(str, "%d", number);
+    sprintf(str, "%li", number);
 
     size_t number_len = strlen(str);
 
@@ -78,12 +84,13 @@ int sum_invalid_ids(sequence_id *lower_bound, sequence_id *upper_bound) {
       continue;
     }
 
-    int number_len = index - currIdxPointer;
-    char subbuff[index - currIdxPointer];
+    sequence_id *invalid_id = malloc(sizeof(sequence_id));
+    invalid_id->number = number;
+    invalid_id->number_len = number_len;
 
-    strncpy(subbuff, line_text + index, number_len);
+    sum += invalid_id_value(invalid_id);
 
-    // 11, 22 -> invalid
+    free(invalid_id);
   }
 
   return sum;
@@ -101,19 +108,20 @@ int ex_2(array_string *result) {
   int idPointer = 0;
   sequence_id *firstNumber;
   sequence_id *secondNumber;
-  for (int i = 0; line->str_len; i++) {
+
+  char *line_text = line->array_ptr;
+  for (int i = 0; i <= line->str_len; i++) {
     // if the substring len is impar then it is valid, as we cannot split it in
     // the middle therefore we cannot have sequences repeated twice
-    char *line_text = line->array_ptr;
 
     char c = line_text[i];
 
     if (c == '-') { // id case
-      firstNumber = grab_id(line_text, i, idPointer);
+      firstNumber = grab_id(line_text, idPointer, i);
 
-      idPointer = i + 1;   // jump the '-'
-    } else if (c == ',') { // split case
-      secondNumber = grab_id(line_text, i, idPointer);
+      idPointer = i + 1;                         // jump the '-'
+    } else if (c == ',' || i == line->str_len) { // split case
+      secondNumber = grab_id(line_text, idPointer, i);
 
       idPointer = i + 1; // jump the ','
 
@@ -123,8 +131,10 @@ int ex_2(array_string *result) {
 
       free(firstNumber);
       free(secondNumber);
+
+      printf("------------------------------------------------\n");
     }
   }
 
-  return sum;
+  return sum; // 826380671 -> too low
 }
