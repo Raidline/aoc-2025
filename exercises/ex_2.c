@@ -64,15 +64,7 @@ int sum_invalid_ids(sequence_id *lower_bound, sequence_id *upper_bound) {
   long lower_number = lower_bound->number;
   long upper_number = upper_bound->number;
 
-  if (lower_bound->number_len % 2 == 0) {
-    sum += invalid_id_value(lower_bound);
-  }
-
-  if (upper_bound->number_len % 2 == 0) {
-    sum += invalid_id_value(upper_bound);
-  }
-
-  for (long number = lower_number + 1; number <= upper_number - 1; number++) {
+  for (long number = lower_number; number <= upper_number; number++) {
     char str[20];
 
     sprintf(str, "%li", number);
