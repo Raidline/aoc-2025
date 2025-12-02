@@ -1,26 +1,8 @@
 #include "ex_1.h"
+#include "../core/utils.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-int convert_char_to_number(char *line, int number_len) {
-
-  char subbuff[number_len];
-  strncpy(subbuff, line + 1, number_len);
-  subbuff[number_len] = '\0';
-
-  int number = 0;
-  int multiplier = 1;
-
-  for (int i = 0; i < number_len - 1; i++, multiplier *= 10) {
-    number *= 10;
-    int curr = (subbuff[i] - '0');
-
-    number += curr;
-  }
-
-  return number;
-}
 
 // int execute_operation(char dir, int number, int current_rotation) {
 
@@ -52,16 +34,12 @@ int number_zero_clicks(char dir, int number, int current_rotation,
   }
 
   int total_rotations = abs(new_rotation / 100);
-  printf("unparsed sum, %d\n", new_rotation);
-  printf("complete rotations, %d\n", total_rotations);
 
   if (new_rotation <= 0 && current_rotation != 0) {
     total_rotations++;
   }
 
   new_rotation = new_rotation % 100;
-
-  printf("calculation, %d\n", new_rotation);
 
   if (new_rotation <= 0) {
     new_rotation += 100;
@@ -80,7 +58,6 @@ int ex_1(array_string *result) {
   int dial_point_0_counter = 0;
 
   for (int i = 0; i < result->length; i++) {
-    printf("old rotation: %d\n", current_rotation);
     line_string *line_data = result->lines[i];
 
     char *line = line_data->array_ptr;
@@ -89,23 +66,16 @@ int ex_1(array_string *result) {
     int number_len = line_data->str_len - 1;
     int number = convert_char_to_number(line, number_len);
 
-    printf("dir %c, rotation number, %d\n", dir, number);
-
     // current_rotation = execute_operation(dir, number, current_rotation);
     int zero_clicks = 0;
     current_rotation =
         number_zero_clicks(dir, number, current_rotation, &zero_clicks);
-
-    printf("new rotation value: %d\n", current_rotation);
-    printf("number of rotation that hit 0: %d\n", zero_clicks);
 
     // if (current_rotation == 0) {
     //   dial_point_0_counter++;
     // }
     //
     dial_point_0_counter += zero_clicks;
-
-    printf("----------------------------------------\n");
   }
 
   return dial_point_0_counter;
