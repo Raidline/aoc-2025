@@ -3,6 +3,6 @@
 
 #include "../core/read_file.h"
 
-int ex_2(array_string* result);
+long ex_2(array_string* result);
 
 #endif

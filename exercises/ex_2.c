@@ -19,23 +19,53 @@ char *split_number(long number, int start, int end, int number_len) {
   return subbuff;
 }
 
+// // 11, 22 -> invalid
+// long invalid_id_value(sequence_id *id) {
+//   long number = id->number;
+
+//   char *str_left =
+//       split_number(number, 0, (id->number_len / 2) - 1, id->number_len);
+
+//   char *str_right =
+//       split_number(number, id->number_len / 2, id->number_len,
+//       id->number_len);
+
+//   int cmp = strcmp(str_left, str_right);
+
+//   if (cmp != 0) {
+//     return 0;
+//   }
+
+//   return number;
+// }
+
 // 11, 22 -> invalid
-int invalid_id_value(sequence_id *id) {
+long invalid_id_value_2(sequence_id *id) {
   long number = id->number;
 
-  char *str_left =
-      split_number(number, 0, (id->number_len / 2) - 1, id->number_len);
+  char *str = malloc(id->number_len * (sizeof(char *)));
+  sprintf(str, "%li", number);
 
-  char *str_right =
-      split_number(number, id->number_len / 2, id->number_len, id->number_len);
+  char base = str[0];
 
-  int cmp = strcmp(str_left, str_right);
+  for (int i = 1; i < id->number_len; i++) {
 
-  if (cmp != 0) {
-    return 0;
+    char c = str[i];
+
+    if (c != base) { // we have a new letter
+
+    } else { // same letter
+
+    }
+
+    int cmp = strcmp(str_left, str_right);
+
+    if (cmp == 0) {
+      return number;
+    }
   }
 
-  return number;
+  return 0;
 }
 
 sequence_id *grab_id(char *line_text, int currIndexPointer, int idx) {
@@ -52,12 +82,7 @@ sequence_id *grab_id(char *line_text, int currIndexPointer, int idx) {
   return id;
 }
 
-int sum_invalid_ids(sequence_id *lower_bound, sequence_id *upper_bound) {
-
-  // impar values do not count
-  if (lower_bound->number_len % 2 == 1 && upper_bound->number_len % 2 == 1) {
-    return 0;
-  }
+long sum_invalid_ids(sequence_id *lower_bound, sequence_id *upper_bound) {
 
   long sum = 0;
 
@@ -71,16 +96,11 @@ int sum_invalid_ids(sequence_id *lower_bound, sequence_id *upper_bound) {
 
     size_t number_len = strlen(str);
 
-    // impar do not count
-    if (number_len % 2 == 1) {
-      continue;
-    }
-
     sequence_id *invalid_id = malloc(sizeof(sequence_id));
     invalid_id->number = number;
     invalid_id->number_len = number_len;
 
-    sum += invalid_id_value(invalid_id);
+    sum += invalid_id_value_2(invalid_id);
 
     free(invalid_id);
   }
@@ -88,12 +108,12 @@ int sum_invalid_ids(sequence_id *lower_bound, sequence_id *upper_bound) {
   return sum;
 }
 
-int ex_2(array_string *result) {
+long ex_2(array_string *result) {
 
   // this is just one line
 
   line_string *line = result->lines[0];
-  int sum = 0;
+  long sum = 0;
   // ranges seperated by ,
   // ids seperated by -
 
@@ -117,7 +137,7 @@ int ex_2(array_string *result) {
 
       idPointer = i + 1; // jump the ','
 
-      int interval_sum = sum_invalid_ids(firstNumber, secondNumber);
+      long interval_sum = sum_invalid_ids(firstNumber, secondNumber);
 
       sum += interval_sum;
 
