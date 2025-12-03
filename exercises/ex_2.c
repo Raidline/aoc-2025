@@ -8,6 +8,11 @@ typedef struct sequence_id {
   int number_len;
 } sequence_id;
 
+typedef struct repeated_counter {
+  char *str;
+  int str_len;
+} repeated_counter;
+
 char *split_number(long number, int start, int end, int number_len) {
   int splitted_len = number_len / 2;
   char *str = malloc(splitted_len * (sizeof(char *)));
@@ -39,6 +44,15 @@ char *split_number(long number, int start, int end, int number_len) {
 //   return number;
 // }
 
+repeated_counter *create_repeated_counter(char *subbuff) {
+
+  repeated_counter *seq = malloc(sizeof(repeated_counter));
+  seq->str = subbuff;
+  seq->str_len = strlen(subbuff);
+
+  return seq;
+}
+
 // 11, 22 -> invalid
 long invalid_id_value_2(sequence_id *id) {
   long number = id->number;
@@ -46,34 +60,49 @@ long invalid_id_value_2(sequence_id *id) {
   char *str = malloc(id->number_len * (sizeof(char *)));
   sprintf(str, "%li", number);
 
-  size_t base_len = 1; // with null terminator;
-  char *base = malloc(base_len * (sizeof(char *)));
-  base[0] = str[0];
-  base[1] = '\0';
-  int foundBaseIndex = 0;
+  long number_ret = 0;
 
-  for (int i = 1; i < id->number_len; i++) {
+  // printf("looking at number : [%li]- len :[%d]\n", number, id->number_len);
+  //   giving 101,1001 as invalid! -> should not as it is not repeated directly
+  //   not giving 446446 as invalid! -> should  it is repeated
+  for (int i = 0; i < id->number_len; i++) {
 
-    char c = str[i];
+    int len = i + 1;
 
-    if (c != base) { // we have a new letter
-        base_len++;
-        //todo: add to the same string
-        base[base_len] = '\0';
-    } else { // same letter
-      foundBaseIndex = i;
+    char subbuff[len];
 
-      //todo: create a new string (base) and then compare with previous
+    strncpy(subbuff, str, len);
+    subbuff[len] = '\0';
+
+    // printf("examining subbuf [%s] - buf len [%d]\n", subbuff, len);
+    int matches = 0;
+    for (int j = len; j < id->number_len; j += len) {
+      char str_cmp[len];
+
+      strncpy(str_cmp, str + j, len);
+      str_cmp[len] = '\0';
+
+      // printf("looking at chunk [%s]\n", str_cmp);
+
+      if (strcmp(subbuff, str_cmp) == 0) {
+        matches = 1;
+      } else {
+        matches = 0;
+        break;
+      }
     }
 
-    int cmp = strcmp(str_left, str_right);
-
-    if (cmp == 0) {
-      return number;
+    if (matches == 1) {
+      number_ret = number;
+      break;
     }
   }
 
-  return 0;
+  if (number_ret != 0) {
+    printf("returning %li\n", number_ret);
+  }
+
+  return number_ret;
 }
 
 sequence_id *grab_id(char *line_text, int currIndexPointer, int idx) {
@@ -131,8 +160,8 @@ long ex_2(array_string *result) {
 
   char *line_text = line->array_ptr;
   for (int i = 0; i <= line->str_len; i++) {
-    // if the substring len is impar then it is valid, as we cannot split it in
-    // the middle therefore we cannot have sequences repeated twice
+    // if the substring len is impar then it is valid, as we cannot split it
+    // in the middle therefore we cannot have sequences repeated twice
 
     char c = line_text[i];
 
