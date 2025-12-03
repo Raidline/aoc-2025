@@ -1,6 +1,7 @@
 #include "core/read_file.h"
 //#include "exercises/ex_1.h"
-#include "exercises/ex_2.h"
+//#include "exercises/ex_2.h"
+#include "exercises/ex_3.h"
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -21,7 +22,8 @@ int main() {
   array_string *result = read_file("input/ex2.txt");
 
   //printf("%d", ex_1(result));
-  printf("%li", ex_2(result));
+  //printf("%li", ex_2(result));
+  printf("%d", ex_3(result));
 
 
   free_array_struct(result);
