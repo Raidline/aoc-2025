@@ -46,16 +46,24 @@ long invalid_id_value_2(sequence_id *id) {
   char *str = malloc(id->number_len * (sizeof(char *)));
   sprintf(str, "%li", number);
 
-  char base = str[0];
+  size_t base_len = 1; // with null terminator;
+  char *base = malloc(base_len * (sizeof(char *)));
+  base[0] = str[0];
+  base[1] = '\0';
+  int foundBaseIndex = 0;
 
   for (int i = 1; i < id->number_len; i++) {
 
     char c = str[i];
 
     if (c != base) { // we have a new letter
-
+        base_len++;
+        //todo: add to the same string
+        base[base_len] = '\0';
     } else { // same letter
+      foundBaseIndex = i;
 
+      //todo: create a new string (base) and then compare with previous
     }
 
     int cmp = strcmp(str_left, str_right);
