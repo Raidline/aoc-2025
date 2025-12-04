@@ -48,13 +48,6 @@ void debug_matrix(array_string *values) {
   printf("-------------------------------------------\n");
 }
 
-void fill_array(point positions[], int len) {
-  for (int i = 0; i < len; i++) {
-    point p = {-1, -1};
-    positions[i] = p;
-  }
-}
-
 void remove_positions(array_string *values, point positions[], int arr_len) {
   for (int i = 0; i < arr_len; i++) {
     point p = positions[i];
@@ -73,7 +66,7 @@ void clear_positions_array(point positions[], int arr_len) {
 
   for (int i = 0; i < arr_len; i++) {
     point p = {-1, -1};
-    positions[0] = p;
+    positions[i] = p;
   }
 }
 
@@ -177,7 +170,7 @@ int ex_4(array_string *result) {
   int positions_idx = 0;
   point positions_to_remove[arr_len];
 
-  fill_array(positions_to_remove, arr_len);
+  clear_positions_array(positions_to_remove, arr_len);
   //debug_positions_array(positions_to_remove, arr_len);
 
   do {
