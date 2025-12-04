@@ -60,26 +60,17 @@ void swap_2(char voltages[], char new, int inserted, int max) {
     return;
   }
 
-  // 811111111111|119
-  // 8 -> 8
-  // 1 -> 81
-  // 1 -> 811
-  // 1 -> 8111
-  // 1 -> 81111
-  // 1 -> 811111
-  // 1 -> 8111111
-  // 1 -> 81111111
-  // 1 -> 811111111
-  // 1 -> 8111111111
-  // 1 -> 81111111111
-  // 1 -> 811111111111
-  // continue example tomorrow!
-
   for (int i = 0; i < max; i++) {
     if (voltages[i] < voltages[i + 1]) {
       shift_array(voltages, i, max);
       voltages[max - 1] = new;
+
+      break;
     }
+  }
+
+  if (voltages[max - 1] < new) {
+    voltages[max - 1] = new;
   }
 }
 
@@ -95,8 +86,15 @@ long ex_3(array_string *result) {
 
     fill_batts(voltages, max_batt);
 
+    //printf("looking at line : [%s]\n", line->array_ptr);
+    //printf("array state, [%s]\n", voltages);
+
     for (int j = 0; j < line->str_len; j++) {
       char c = line->array_ptr[j];
+
+      if (c == '\n') {
+          continue;
+      }
 
       // printf("array state, [%s]\n", voltages);
 
