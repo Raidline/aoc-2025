@@ -108,6 +108,7 @@ int count_down_adjacent_points(int x, int max_x_len, array_string *values) {
 
   return valid_count;
 }
+
 int count_up_adjacent_points(int max_len, int x, int max_x_len,
                              array_string *values) {
   int y = max_len - 1;
@@ -147,6 +148,7 @@ int count_up_adjacent_points(int max_len, int x, int max_x_len,
 
   return valid_count;
 }
+
 int count_adjacent_points(int y, int x, array_string *values) {
   int valid_count = 0;
   line_string **matrix = values->lines;
