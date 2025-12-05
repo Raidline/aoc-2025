@@ -2,7 +2,8 @@
 //#include "exercises/ex_1.h"
 //#include "exercises/ex_2.h"
 //#include "exercises/ex_3.h"
-#include "exercises/ex_4.h"
+//#include "exercises/ex_4.h"
+#include "exercises/ex_5.h"
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -25,7 +26,8 @@ int main() {
   //printf("%d", ex_1(result));
   //printf("%li", ex_2(result));
   //printf("%li", ex_3(result));
-  printf("%d", ex_4(result));
+  //printf("%d", ex_4(result));
+  printf("%d", ex_5(result));
 
 
   free_array_struct(result);
