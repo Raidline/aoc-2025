@@ -61,6 +61,13 @@ typedef struct range_value {
   long upper;
 } range_value;
 
+void debug_range_matrix(range_value **values, int len) {
+  for (int i = 0; i < len; i++) {
+    printf("value : [min : %li]|[max : %li]\n", values[i]->lower,
+           values[i]->upper);
+  }
+}
+
 void free_array(range_value **values, int len) {
   for (int i = 0; i < len; i++) {
     free(values[i]);
@@ -84,10 +91,9 @@ int index_of(char *line, char needle, int len) {
 void fill_array(range_value *value[], int len) {
   for (int i = 0; i < len; i++) {
     range_value *val = malloc(sizeof(range_value));
-    val->lower = -1;
-    val->upper = -1;
+    val->lower = 2147483647;
+    val->upper = 2147483647;
 
-    value[i] = val;
     value[i] = val;
   }
 }
@@ -98,7 +104,8 @@ range_value *grab_range(char *line_text, int currIndexPointer, int len) {
 
   // what about terminator?
   strncpy(leftValue, line_text, currIndexPointer);
-  strncpy(rightValue, line_text + currIndexPointer, len - currIndexPointer);
+  strncpy(rightValue, line_text + (currIndexPointer + 1),
+          len - currIndexPointer);
 
   range_value *value = malloc(sizeof(range_value));
 
@@ -164,8 +171,7 @@ int partition(range_value **values, int lo, int hi) {
   int idx = lo - 1;
 
   for (int i = lo; i < hi; i++) {
-    if (values[i]->lower <= pivot->lower ||
-        (values[i] == NULL || pivot == NULL)) {
+    if (values[i]->lower <= pivot->lower) {
       idx++;
       range_value *tmp = values[i];
       values[i] = values[idx];
@@ -225,16 +231,27 @@ bool insert_into_array(range_value **values, range_value *value, int len) {
   // we get the highest point (new.higher >= higher)
   int point = find_lowest_insertion_point_in_array(values, value->lower, len);
 
+  printf("lower point of insertion : %d - len : %d\n", point, len);
+
+  if (point == len) {
+    values[len] = value;
+
+    return true;
+  }
+
   for (int i = point; i < len; i++) {
     range_value *curr = values[i];
 
     if (value->upper < curr->upper) {
-      break;
-    }
-
-    if (value->upper >= curr->upper) {
-      free(curr);
-      values[i] = NULL;
+      for (int j = i; j < len; j++) {
+        values[j + 1] = curr;
+      }
+      values[i] = value;
+      return true;
+    } else if (value->upper >= curr->upper) {
+      values[i] = malloc(sizeof(range_value));
+      values[i]->lower = 2147483647;
+      values[i]->upper = 2147483647;
     }
   }
 
@@ -247,9 +264,11 @@ int ex_5(array_string *result) {
 
   int len = result->length;
   int max_items = 0;
-  range_value **ranges = malloc(len * sizeof(range_value));
+  range_value **ranges = malloc(len * sizeof(range_value *));
   bool searching = false;
   int count = 0;
+
+  fill_array(ranges, len);
 
   for (int i = 0; i < result->length; i++) {
     line_string *line = result->lines[i];
@@ -266,13 +285,22 @@ int ex_5(array_string *result) {
         count++;
       }
     } else {
-      printf("looking at string : [%s]", line->array_ptr);
-      if (strcmp(line->array_ptr, "\n") == 0) {
+      printf("looking at string : [%s|%li]\n", line->array_ptr,
+             strlen(line->array_ptr));
+      if (strlen(line->array_ptr) == 0) {
         searching = true;
         // todo: !segfault here!
         //  start debugging shit
-        sort_array(ranges, 0, len - 1);
-        ranges = realloc(ranges, max_items * sizeof(range_value));
+        printf("before sorting...\n");
+        debug_range_matrix(ranges, len);
+
+        // todo: issue is in sorting
+        //sort_array(ranges, 0, len - 1);
+        printf("before realloc...\n");
+        debug_range_matrix(ranges, len);
+        ranges = realloc(ranges, max_items * sizeof(*ranges));
+        printf("after realloc...\n");
+        debug_range_matrix(ranges, len);
         continue;
       }
 
