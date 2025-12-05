@@ -1,5 +1,7 @@
 #include "ex_5.h"
+#include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 // order the ranges by the left value
 // then find the range
@@ -59,65 +61,236 @@ typedef struct range_value {
   long upper;
 } range_value;
 
-// binary_search
-bool find_in_array(range_value *values[], long value) { return false; }
+void free_array(range_value **values, int len) {
+  for (int i = 0; i < len; i++) {
+    free(values[i]);
+  }
 
-void insert_into_array(range_value *value, range_value *values[]) {
-  // do stuff
+  free(values);
 }
 
-range_value *create_range(line_string *line, int splitIdx) {
+long to_long(char *line) { return strtol(line, NULL, 10); }
+
+int index_of(char *line, char needle, int len) {
+  for (int i = 0; i < len; i++) {
+    if (line[i] == needle) {
+      return i;
+    }
+  }
+
+  return -1;
+}
+
+void fill_array(range_value *value[], int len) {
+  for (int i = 0; i < len; i++) {
+    range_value *val = malloc(sizeof(range_value));
+    val->lower = -1;
+    val->upper = -1;
+
+    value[i] = val;
+    value[i] = val;
+  }
+}
+
+range_value *grab_range(char *line_text, int currIndexPointer, int len) {
+  char leftValue[currIndexPointer];
+  char rightValue[len - currIndexPointer];
+
+  // what about terminator?
+  strncpy(leftValue, line_text, currIndexPointer);
+  strncpy(rightValue, line_text + currIndexPointer, len - currIndexPointer);
+
   range_value *value = malloc(sizeof(range_value));
 
-  // split the values
+  value->lower = to_long(leftValue);
+  value->upper = to_long(rightValue);
 
   return value;
 }
 
+bool find_in_array(range_value **values, long needle, int len) {
+  int lo = 0;
+  int hi = len;
+
+  do {
+    int mid = (lo + (hi - lo) / 2);
+    range_value *value = values[mid];
+
+    if (value->lower == needle) {
+      if (value->upper < needle) {
+        return true;
+      }
+    } else if (value->lower > needle) {
+      hi = mid;
+    } else {
+      if (value->upper <= needle) {
+        return true;
+      }
+      lo = mid + 1;
+    }
+  } while (lo < hi);
+
+  return false;
+}
+
+int find_lowest_insertion_point_in_array(range_value **values, long needle,
+                                         int len) {
+  int lo = 0;
+  int hi = len;
+
+  do {
+    int mid = (lo + (hi - lo) / 2);
+    range_value *value = values[mid];
+
+    if (value->lower == needle) {
+      if (needle < value->upper) {
+        return mid - 1; // go to the left
+      }
+
+      return mid;
+    } else if (value->lower > needle) {
+      hi = mid;
+    } else {
+      return mid + 1;
+    }
+  } while (lo < hi);
+
+  return 0;
+}
+
+int partition(range_value **values, int lo, int hi) {
+  range_value *pivot = values[hi / 2];
+
+  int idx = lo - 1;
+
+  for (int i = lo; i < hi; i++) {
+    if (values[i]->lower <= pivot->lower ||
+        (values[i] == NULL || pivot == NULL)) {
+      idx++;
+      range_value *tmp = values[i];
+      values[i] = values[idx];
+      values[idx] = tmp;
+    }
+  }
+
+  idx++;
+  values[hi] = values[idx];
+  values[idx] = pivot;
+
+  return idx;
+}
+
+// this is putting all the NULLS at the end, so we can "trim" the array
+void sort_array(range_value **values, int lo, int hi) {
+
+  if (lo >= hi) {
+    return;
+  }
+
+  int pivotIdx = partition(values, lo, hi);
+
+  sort_array(values, lo, pivotIdx - 1);
+  sort_array(values, pivotIdx + 1, hi);
+}
+
+bool insert_into_array(range_value **values, range_value *value, int len) {
+  if (len == 0) {
+    values[0] = value;
+    return true;
+  }
+
+  if (len == 1) {
+    if ((values[0]->lower == value->lower) &&
+        (values[0]->upper == value->upper)) {
+      // ignore this entry
+      return false;
+    }
+
+    if (value->lower < values[0]->lower) {
+      values[1] = value;
+    } else if (values[0]->lower > value->lower) {
+      values[1] = values[0];
+      values[0] = value;
+    } else {
+      if (value->upper < values[0]->upper) {
+        values[1] = values[0];
+        values[0] = value;
+      } else {
+        values[1] = value;
+      }
+    }
+  }
+
+  // new logic where we need to find the lowest point, and then go through until
+  // we get the highest point (new.higher >= higher)
+  int point = find_lowest_insertion_point_in_array(values, value->lower, len);
+
+  for (int i = point; i < len; i++) {
+    range_value *curr = values[i];
+
+    if (value->upper < curr->upper) {
+      break;
+    }
+
+    if (value->upper >= curr->upper) {
+      free(curr);
+      values[i] = NULL;
+    }
+  }
+
+  values[point] = value;
+
+  return true;
+}
+
 int ex_5(array_string *result) {
 
-  range_value *ranges[result->length];
+  int len = result->length;
+  int max_items = 0;
+  range_value **ranges = malloc(len * sizeof(range_value));
   bool searching = false;
   int count = 0;
 
   for (int i = 0; i < result->length; i++) {
     line_string *line = result->lines[i];
 
-    for (int j = 0; j < line->str_len; j++) {
-      char c = line->array_ptr[j];
+    // we could just see if the line is equal to " "
+    // if is equal searching mode is on
+    // if not and not searching mode do the splitting
+    // if not and searching, apply the search
 
-      if (searching) {
-        // get the long value from this line
-        // search the value
-        //
-        int found = find_in_array(ranges, -1);
+    if (searching) {
+      bool found = find_in_array(ranges, to_long(line->array_ptr), max_items);
 
-        if (found) {
-          count++;
-        }
-
+      if (found) {
+        count++;
+      }
+    } else {
+      printf("looking at string : [%s]", line->array_ptr);
+      if (strcmp(line->array_ptr, "\n") == 0) {
+        searching = true;
+        // todo: !segfault here!
+        //  start debugging shit
+        sort_array(ranges, 0, len - 1);
+        ranges = realloc(ranges, max_items * sizeof(range_value));
         continue;
       }
 
-      if (c == '-') {
-        // it is a split
-        //
-        // get left value
-        // get right value
-        // create struct of both
-        // place them inside the array and sort it
-        //
-        continue; // we alredy have both values no need to continue iterating
-                  // this line
-      }
+      int splitIdx = index_of(line->array_ptr, '-', line->str_len);
+      if (splitIdx == -1) {
+        printf("something very wrong has happened in the code, we should get "
+               "here.\n");
 
-      if (c == ' ') {
-        // we are in the finding part.
-        // start applying binary search.
-        searching = true;
+        return -1;
+      }
+      range_value *range = grab_range(line->array_ptr, splitIdx, line->str_len);
+      if (insert_into_array(ranges, range, max_items)) {
+        max_items++;
       }
     }
   }
+
+  free_array(ranges, len);
 
   return count;
 }
