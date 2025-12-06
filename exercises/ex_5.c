@@ -116,16 +116,6 @@ long long count_valid_ranges(range_value **ranges, int len) {
 
   merged = realloc(merged, mcount * sizeof(*ranges));
 
-  // // disjoint values
-  // for (int i = 0; i < len - 1; i++) {
-  //   if (merged[i + 1]->lower <= merged[i]->upper) {
-  //     long new_end = MAX(merged[i]->upper, merged[i + 1]->upper);
-
-  //     merged[i]->upper = merged[i + 1]->lower - 1;
-  //     merged[i + 1]->upper = new_end;
-  //   }
-  // }
-
   long long sum = 0;
   for (int i = 0; i < mcount; i++) {
     sum += merged[i]->upper - merged[i]->lower + 1;
