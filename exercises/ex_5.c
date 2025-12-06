@@ -123,8 +123,6 @@ long long count_valid_ranges(range_value **ranges, int len) {
 
   free_array(merged, mcount);
 
-  // 360246169541235 -> too low
-
   return sum;
 }
 
