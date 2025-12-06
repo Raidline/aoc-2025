@@ -27,7 +27,7 @@ int main() {
   //printf("%li", ex_2(result));
   //printf("%li", ex_3(result));
   //printf("%d", ex_4(result));
-  printf("%li", ex_5(result));
+  printf("%lli", ex_5(result));
 
 
   free_array_struct(result);
