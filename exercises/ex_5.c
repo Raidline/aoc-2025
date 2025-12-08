@@ -1,4 +1,5 @@
 #include "ex_5.h"
+#include "../core/utils.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -31,18 +32,6 @@ void free_array(range_value **values, int len) {
   }
 
   free(values);
-}
-
-long long to_long(char *line) { return atoll(line); }
-
-int index_of(char *line, char needle, int len) {
-  for (int i = 0; i < len; i++) {
-    if (line[i] == needle) {
-      return i;
-    }
-  }
-
-  return -1;
 }
 
 void fill_array(range_value *value[], int len) {
@@ -182,7 +171,7 @@ long long ex_5(array_string *result) {
       return count_valid_ranges(ranges, max_items);
     }
 
-    int splitIdx = index_of(line->array_ptr, '-', line->str_len);
+    int splitIdx = index_of(line->array_ptr, '-', 0, line->str_len);
     if (splitIdx == -1) {
       printf("something very wrong has happened in the code, we should get "
              "here.\n");

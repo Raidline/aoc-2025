@@ -2,7 +2,7 @@
 CC = cc
 
 # Flags
-CFLAGS = -Wall -Wextra -O2 -g
+CFLAGS = -Wall -Wextra -O0 -g
 
 # Search all directories recursively for .c files
 SRCS := $(shell find . -name '*.c')

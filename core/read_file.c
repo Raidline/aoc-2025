@@ -28,7 +28,7 @@ array_string *read_file(const char *filename) {
     line_string *line_data = malloc(sizeof(line_string));
     line_data->array_ptr = malloc(len);
     memcpy(line_data->array_ptr, buf, len);
-    line_data->array_ptr[strlen(line_data->array_ptr) - 1] = '\0';
+    line_data->array_ptr[strlen(line_data->array_ptr)] = '\0';
 
     line_data->str_len = len;
 

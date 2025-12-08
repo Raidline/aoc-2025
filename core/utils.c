@@ -1,5 +1,18 @@
 #include "utils.h"
+#include <stdlib.h>
 #include <string.h>
+
+int index_of(char *line, char needle, int start, int len) {
+  for (int i = start; i < len; i++) {
+    if (line[i] == needle) {
+      return i;
+    }
+  }
+
+  return -1;
+}
+
+long long to_long(char *line) { return atoll(line); }
 
 int convert_char_to_number(char *line, int number_len) {
 
