@@ -95,6 +95,10 @@ long ex_7(array_string *result) {
 
   // todo: at this point the result is with the all the possibilities.
   //  process them and calculate the alternate timelines
+  //
+  // CREATE A MAP WITH ALL THE VISITED NODES AND GO FROM THERE!
+  // 1º APPROACH -> RUN THE SCENARIO MULTIPLE TIMES AND COUNT HOW MANY TIMES WE HAD A DIFFERENT "PATH"!
+
 
   free_debug_state(debug_state, result->length);
 
