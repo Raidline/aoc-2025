@@ -22,7 +22,7 @@ void free_array_struct(array_string *pointer) {
 }
 
 int main() {
-  array_string *result = read_file("input/ex7_test.txt");
+  array_string *result = read_file("input/ex7.txt");
 
   // printf("%d", ex_1(result));
   // printf("%li", ex_2(result));
