@@ -64,7 +64,6 @@ long ex_7(array_string *result) {
 
     for (int column = 0; column < columns->str_len; column++) {
       char ch = columns->array_ptr[column];
-      // todo:only do the split IF the top level has beam
       debug_state[line][column] = ch;
       line_string *top_line = result->lines[line - 1];
       bool has_top_beam = location_found(top_line, top_line->str_len, column);
@@ -90,12 +89,13 @@ long ex_7(array_string *result) {
         times_splitted++;
       }
     }
-
-    // printf("----------------------------------------\n");
   }
 
-  // debug_beam_locations(beam_locations, beams_allocated);
-  //print_debug_state(debug_state, result->length, result->lines[0]->str_len);
+  print_debug_state(debug_state, result->length, result->lines[0]->str_len);
+
+  // todo: at this point the result is with the all the possibilities.
+  //  process them and calculate the alternate timelines
+
   free_debug_state(debug_state, result->length);
 
   count = times_splitted;
