@@ -33,20 +33,23 @@ void alloc_all_problems(numbers_holder **problems, int len) {
 
 void debug_problems(numbers_holder **problems, int len) {
   for (int i = 0; i < len; i++) {
-    printf("number in index:[%d]\n", i);
+    printf("index:[%d]->", i);
 
     for (int j = 0; j < problems[i]->size; j++) {
-      printf("number ->%li\n", problems[i]->numbers[j]);
+      printf("%li,", problems[i]->numbers[j]);
     }
+
+    printf("\n");
   }
 }
 
 long apply_operation_to_numbers(numbers_holder *numbers, OPERATION oper) {
 
-  //printf("size of numbers to list : [%d]\n", numbers->size);
+  // printf("size of numbers to list : [%d]\n", numbers->size);
+  printf("oper : [%d]-", oper);
   long result = 0;
   for (int i = 0; i < numbers->size; i++) {
-    //printf("outer number : [%li], oper : [%d]\n", numbers->numbers[i], oper);
+    printf("outer number : [%li],", numbers->numbers[i]);
     switch (oper) {
     case MULT:
       if (result == 0) {
@@ -60,6 +63,8 @@ long apply_operation_to_numbers(numbers_holder *numbers, OPERATION oper) {
       break;
     }
   }
+
+  printf("\n");
 
   return result;
 }
@@ -119,13 +124,16 @@ long ex_6(array_string *result) {
   // }
 
   // 6.b
+  //
+  //
+
   int number_aux = 0;
   int i = 0;
   line_string *line = result->lines[i];
   int outer_index = 0;
   bool is_problem_break = true;
 
-  int column_idx = line->str_len - 1;
+  int column_idx = line->str_len - 2;
 
   do {
     char *column = malloc(result->length - 1 * (sizeof(char)));
@@ -173,13 +181,13 @@ long ex_6(array_string *result) {
     // printf("---------------------------\n");
   } while (column_idx >= 0);
 
-  //printf("outer index final value : [%d]\n", outer_index);
+  // printf("outer index final value : [%d]\n", outer_index);
 
-  debug_problems(problems, outer_index + 1);
+  //debug_problems(problems, outer_index + 1);
 
   line_string *last_line = result->lines[result->length - 1];
 
-  //printf("last line : [%s]\n", last_line->array_ptr);
+  // printf("last line : [%s]\n", last_line->array_ptr);
 
   int operation_index = 0;
   for (int i = last_line->str_len - 1; i >= 0; i--) {
@@ -194,5 +202,5 @@ long ex_6(array_string *result) {
 
   free_struct(problems, outer_index);
 
-  return sum; // 11229006012862997 -> too high
+  return sum; // 11229005961234641 -> too high
 }
