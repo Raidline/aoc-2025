@@ -43,10 +43,10 @@ void debug_problems(numbers_holder **problems, int len) {
 
 long apply_operation_to_numbers(numbers_holder *numbers, OPERATION oper) {
 
-  printf("size of numbers to list : [%d]\n", numbers->size);
+  //printf("size of numbers to list : [%d]\n", numbers->size);
   long result = 0;
   for (int i = 0; i < numbers->size; i++) {
-    printf("outer number : [%li], oper : [%d]\n", numbers->numbers[i], oper);
+    //printf("outer number : [%li], oper : [%d]\n", numbers->numbers[i], oper);
     switch (oper) {
     case MULT:
       if (result == 0) {
@@ -127,13 +127,14 @@ long ex_6(array_string *result) {
 
   int column_idx = line->str_len - 1;
 
-  // printf("looking at char : [%c]\n", line->array_ptr[j]);
-
   do {
     char *column = malloc(result->length - 1 * (sizeof(char)));
-    printf("looking at outer index:[%d], and column_idx:[%d]\n", i, column_idx);
+    // printf("looking at outer index:[%d], and column_idx:[%d]\n", i,
+    // column_idx);
+    //  printf("looking at char : [%c]\n", line->array_ptr[column_idx]);
 
     while (i < result->length - 1) {
+      // printf("looking at char : [%c]\n", line->array_ptr[column_idx]);
       if (isdigit(line->array_ptr[column_idx])) {
         column[number_aux++] = line->array_ptr[column_idx];
         is_problem_break = false;
@@ -145,36 +146,43 @@ long ex_6(array_string *result) {
 
     if (is_problem_break) {
       outer_index++;
+      inner_numbers_index = 0;
+      i = 0;
+      number_aux = 0;
+      free(column);
+      line = result->lines[i];
     } else {
       is_problem_break = true;
       column[number_aux] = '\0';
 
-      printf("column : [%s]\n", column);
+      // printf("column : [%s]\n", column);
 
       long value = to_long(column);
 
-      printf("number as a long : [%li]\n", value);
-      //  printf("inserting into : [%d|%d]\n", outer_index,
-      //         inner_numbers_index);
+      // printf("number as a long : [%li]\n", value);
+      // printf("inserting into : [%d|%d]\n", outer_index, inner_numbers_index);
       problems[outer_index]->numbers[inner_numbers_index++] = value;
       problems[outer_index]->size = problems[outer_index]->size + 1;
 
       free(column);
       i = 0;
       number_aux = 0;
+      line = result->lines[i];
     }
     column_idx--;
-    printf("---------------------------\n");
-  } while (column_idx > 0);
+    // printf("---------------------------\n");
+  } while (column_idx >= 0);
 
-  debug_problems(problems, outer_index);
+  //printf("outer index final value : [%d]\n", outer_index);
+
+  debug_problems(problems, outer_index + 1);
 
   line_string *last_line = result->lines[result->length - 1];
 
-  printf("last line : [%s]\n", last_line->array_ptr);
+  //printf("last line : [%s]\n", last_line->array_ptr);
 
   int operation_index = 0;
-  for (int i = last_line->str_len - 1; i > 0; i--) {
+  for (int i = last_line->str_len - 1; i >= 0; i--) {
     if (last_line->array_ptr[i] == '*') {
       sum += apply_operation_to_numbers(problems[operation_index], MULT);
       operation_index++;
@@ -186,5 +194,5 @@ long ex_6(array_string *result) {
 
   free_struct(problems, outer_index);
 
-  return sum;
+  return sum; // 11229006012862997 -> too high
 }
