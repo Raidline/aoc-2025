@@ -6,7 +6,8 @@
 // #include "exercises/ex_5.h"
 // #include "exercises/ex_6.h"
 // #include "exercises/ex_7.h"
-#include "exercises/ex_8.h"
+// #include "exercises/ex_8.h"
+#include "exercises/ex_9.h"
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -23,7 +24,7 @@ void free_array_struct(array_string *pointer) {
 }
 
 int main() {
-  array_string *result = read_file("input/ex8.txt");
+  array_string *result = read_file("input/ex9.txt");
 
   // printf("%d\n", ex_1(result));
   // printf("%li\n", ex_2(result));
@@ -32,7 +33,8 @@ int main() {
   // printf("%lli\n", ex_5(result));
   // printf("%li\n", ex_6(result));
   // printf("%li\n", ex_7(result));
-  printf("%li\n", ex_8(result));
+  // printf("%li\n", ex_8(result));
+  printf("%li\n", ex_9(result));
 
   free_array_struct(result);
 

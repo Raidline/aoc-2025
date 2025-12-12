@@ -76,14 +76,6 @@ void free_nodes(node **nodes, int len) {
   free(nodes);
 }
 
-long get_value(char *line, int line_len, int idx) {
-  int len = line_len - idx;
-  char number[len];
-  strncpy(number, line + idx, len);
-
-  return to_long(number);
-}
-
 point *extract_point(line_string *line, int i) {
   int j = 0;
   int x_idx = index_of(line->array_ptr, ',', j, line->str_len);

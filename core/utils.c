@@ -2,6 +2,14 @@
 #include <stdlib.h>
 #include <string.h>
 
+long get_value(char *line, int line_len, int idx) {
+  int len = line_len - idx;
+  char number[len];
+  strncpy(number, line + idx, len);
+
+  return to_long(number);
+}
+
 int index_of(char *line, char needle, int start, int len) {
   for (int i = start; i < len; i++) {
     if (line[i] == needle) {
