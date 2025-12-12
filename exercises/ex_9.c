@@ -8,6 +8,12 @@ typedef struct coord_point {
   long y;
 } coord_point;
 
+typedef struct boundarie_point {
+  long x1;
+  long x2;
+  long y;
+} boundarie_point;
+
 typedef struct rectangle {
   coord_point p1;
   coord_point p2;
@@ -22,6 +28,13 @@ void free_rectanges(rectangle **rectangles, int len) {
   }
 
   free(rectangles);
+}
+
+void debug_bondaries(boundarie_point boundaries[], int len) {
+  for (int i = 0; i < len; i++) {
+    boundarie_point p = boundaries[i];
+    printf("boundarie of x: >[%li] & <[%li], y:[%li]\n", p.x1, p.x2, p.y);
+  }
 }
 
 void debug_rectangles(rectangle **rectangles, int len) {
@@ -44,6 +57,19 @@ coord_point get_point(line_string *line) {
   return p;
 }
 
+int compare_coords(const void *a, const void *b) {
+  const boundarie_point ra = *(boundarie_point const *)a;
+  const boundarie_point rb = *(boundarie_point const *)b;
+
+  if (ra.y < rb.y) {
+    return -1;
+  }
+  if (ra.y > rb.y) {
+    return 1;
+  }
+  return 0;
+}
+
 int compare_areas(const void *a, const void *b) {
   const rectangle *ra = *(rectangle *const *)a;
   const rectangle *rb = *(rectangle *const *)b;
@@ -57,8 +83,7 @@ int compare_areas(const void *a, const void *b) {
   return 0;
 }
 
-long ex_9(array_string *result) {
-
+long ex_9_a(array_string *result) {
   int cap = result->length;
   rectangle **rectangles = malloc(cap * sizeof(rectangle *));
   int points_len = 0;
@@ -95,7 +120,7 @@ long ex_9(array_string *result) {
   qsort(rectangles, points_len, sizeof(rectangle *), compare_areas);
   rectangles = realloc(rectangles, points_len * sizeof(rectangle *));
 
-  //debug_rectangles(rectangles, points_len);
+  // debug_rectangles(rectangles, points_len);
 
   long longest_area = rectangles[0]->area;
 
@@ -103,3 +128,87 @@ long ex_9(array_string *result) {
 
   return longest_area;
 }
+
+long ex_9_b(array_string *result) {
+  // todo: !improve this calculation! - not sure we can do it per line
+  boundarie_point boundaries[result->length];
+  for (int i = 0; i < result->length; i++) {
+    line_string *line = result->lines[i];
+    coord_point p1 = get_point(line);
+
+    for (int j = i + 1; j < result->length; j++) {
+      line_string *next_line = result->lines[j];
+      coord_point p2 = get_point(next_line);
+      if (p1.y != p2.y && p1.x == p2.x) {
+        long y = labs(p1.y - p2.y);
+        if (p1.x < p2.x) {
+          boundarie_point boundary = {p1.x, p2.x, y};
+
+          boundaries[p1.y] = boundary;
+        } else {
+          boundarie_point boundary = {p2.x, p1.x, y};
+          boundaries[p1.y] = boundary;
+        }
+      } else if (p1.y == p2.y) {
+        if (p1.x < p2.x) {
+          boundarie_point boundary = {p1.x, p2.x, p1.y};
+
+          boundaries[p1.y] = boundary;
+        } else {
+          boundarie_point boundary = {p2.x, p1.x, p1.y};
+          boundaries[p1.y] = boundary;
+        }
+      }
+    }
+  }
+
+  debug_bondaries(boundaries, result->length);
+
+  qsort(boundaries, result->length, sizeof(coord_point), compare_coords);
+
+  int cap = result->length;
+  rectangle **rectangles = malloc(cap * sizeof(rectangle *));
+  int points_len = 0;
+  for (int i = 0; i < result->length - 1; i++) {
+    line_string *line = result->lines[i];
+
+    coord_point p1 = get_point(line);
+
+    for (int j = i + 1; j < result->length; j++) {
+      line_string *next_line = result->lines[j];
+
+      coord_point p2 = get_point(next_line);
+
+      // always sum 1 for the diff as the self also counts;
+      long rect_length = labs(p1.x - p2.x) + 1;
+      long rect_height = labs(p1.y - p2.y) + 1;
+
+      rectangle *rect = malloc(sizeof(rectangle));
+      rect->p1 = p1;
+      rect->p2 = p2;
+      rect->height = rect_height;
+      rect->length = rect_length;
+      rect->area = rect_height * rect_length;
+
+      rectangles[points_len++] = rect;
+
+      if (points_len == cap) {
+        cap = cap * 2;
+        rectangles = realloc(rectangles, cap * sizeof(rectangle *));
+      }
+    }
+  }
+
+  // qsort(rectangles, points_len, sizeof(rectangle *), compare_areas);
+  rectangles = realloc(rectangles, points_len * sizeof(rectangle *));
+
+  // debug_rectangles(rectangles, points_len);
+
+  long longest_area = rectangles[0]->area;
+
+  free_rectanges(rectangles, points_len);
+
+  return longest_area;
+}
+
+long ex_9(array_string *result) { return ex_9_b(result); }
