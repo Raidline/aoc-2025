@@ -154,6 +154,17 @@ void update_affected_neighbours(point_group groups[], int len,
   }
 }
 
+bool are_all_same_group(point_group groups[], int len) {
+  int last_value = groups[0].group;
+  for (int i = 1; i < len; i++) {
+    if (groups[i].group != last_value) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 long ex_8(array_string *result) {
 
   int cap = result->length;
@@ -187,24 +198,29 @@ long ex_8(array_string *result) {
 
   qsort(nodes, nodes_len, sizeof(node *), compare_distances);
 
-  nodes = realloc(nodes, MAX_LENGTH * sizeof(node *));
+  nodes = realloc(nodes, nodes_len * sizeof(node *));
 
-  //printf("Looking at top 10 distances\n");
+  // printf("Looking at top 10 distances\n");
 
-  //debug_all_distances(nodes, MAX_LENGTH);
+  // debug_all_distances(nodes, nodes_len);
 
   int group_counter = 1;
-  long *groups_sizes = calloc(MAX_LENGTH, sizeof(int));
+  long *groups_sizes = calloc(result->length, sizeof(long));
 
   // debug_groups(groups, result->length);
 
-  for (int i = 0; i < MAX_LENGTH; i++) {
+  point **last_junction_point = calloc(2, sizeof(point));
+
+  for (int i = 0; i < nodes_len; i++) {
     node *n = nodes[i];
     point *pl = n->left;
     point *pr = n->right;
 
     int group_l = groups[pl->index].group;
     int group_r = groups[pr->index].group;
+
+    last_junction_point[0] = pl;
+    last_junction_point[1] = pr;
 
     if (group_l == 0 && group_r == 0) {
       groups[pl->index].group = group_counter;
@@ -232,6 +248,7 @@ long ex_8(array_string *result) {
 
         update_affected_neighbours(groups, result->length, group_r, group_l,
                                    groups_sizes);
+
       } else {
         groups_sizes[groups[pr->index].group] =
             groups_sizes[groups[pr->index].group] + 1;
@@ -258,20 +275,32 @@ long ex_8(array_string *result) {
 
       groups_sizes[max_index] = groups_sizes[max_index] + 1;
     }
+
+    bool same_group = are_all_same_group(groups, result->length);
+
+    if (same_group) {
+      break;
+    }
   }
 
-  // debug_groups(groups, result->length);
+  debug_groups(groups, result->length);
 
-  qsort(groups_sizes, MAX_LENGTH, sizeof(long), compare_group_size);
+  // qsort(groups_sizes, MAX_LENGTH, sizeof(long), compare_group_size);
 
-  long multipler = 1;
+  // long multipler = 1;
 
-  for (int i = 0; i < MAX_GROUPS; i++) {
-    multipler *= groups_sizes[i];
-  }
+  // for (int i = 0; i < MAX_GROUPS; i++) {
+  //   multipler *= groups_sizes[i];
+  // }
+  //
+  printf("last junction point -> p1:[%li,%li,%li], p2:[%li,%li,%li]\n",
+         last_junction_point[0]->x, last_junction_point[0]->y,
+         last_junction_point[0]->z, last_junction_point[1]->x,
+         last_junction_point[1]->y, last_junction_point[1]->z);
+  long multiplier = last_junction_point[0]->x * last_junction_point[1]->x;
 
   // debug_group_count(groups_sizes, MAX_LENGTH);
   free_nodes(nodes, MAX_LENGTH);
 
-  return multipler;
+  return multiplier;
 }
