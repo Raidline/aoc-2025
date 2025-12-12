@@ -23,16 +23,16 @@ void free_array_struct(array_string *pointer) {
 }
 
 int main() {
-  array_string *result = read_file("input/ex8_test.txt");
+  array_string *result = read_file("input/ex8.txt");
 
-  // printf("%d", ex_1(result));
-  // printf("%li", ex_2(result));
-  // printf("%li", ex_3(result));
-  // printf("%d", ex_4(result));
-  // printf("%lli", ex_5(result));
-  // printf("%li", ex_6(result));
-  // printf("%li", ex_7(result));
-  printf("%li", ex_8(result));
+  // printf("%d\n", ex_1(result));
+  // printf("%li\n", ex_2(result));
+  // printf("%li\n", ex_3(result));
+  // printf("%d\n", ex_4(result));
+  // printf("%lli\n", ex_5(result));
+  // printf("%li\n", ex_6(result));
+  // printf("%li\n", ex_7(result));
+  printf("%li\n", ex_8(result));
 
   free_array_struct(result);
 

@@ -5,6 +5,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+const int MAX_GROUPS = 3;
+const int MAX_LENGTH = 1000;
+
 typedef struct point {
   long x;
   long y;
@@ -23,9 +26,22 @@ typedef struct point_group {
   int group;
 } point_group;
 
+typedef struct group_aggregation {
+  point_group group;
+  int size;
+} group_aggregation;
+
+typedef enum { false, true } bool;
+
+void debug_group_count(int group_sizes[], int len) {
+  for (int i = 0; i < len; i++) {
+    printf("Group : %d, has size : [%d]\n", i, group_sizes[i]);
+  }
+}
+
 void debug_groups(point_group groups[], int len) {
   for (int i = 0; i < len; i++) {
-    printf("point : (%li,%li,%li) has group : [%d]\n", groups[i].p->x,
+    printf("point : (%li,%li,%li) in group : [%d]\n", groups[i].p->x,
            groups[i].p->y, groups[i].p->z, groups[i].group);
   }
 }
@@ -34,25 +50,27 @@ void debug_all_distances(node **distances, int len) {
   for (int i = 0; i < len; i++) {
     node *n = distances[i];
 
-    printf("distance between :(%li,%li,%li) & (%li,%li,%li) -> %f\n",
-           n->left->x, n->left->y, n->left->z, n->right->x, n->right->y,
-           n->right->z, n->distance);
+    if (n == NULL) {
+      printf("NULL node! at index:[%d]\n", i);
+    } else {
+      printf("distance between :([index:%d]:%li,%li,%li) & "
+             "([index:%d]:%li,%li,%li) -> %f\n",
+             n->left->index, n->left->x, n->left->y, n->left->z,
+             n->right->index, n->right->x, n->right->y, n->right->z,
+             n->distance);
+    }
   }
 }
 
-void debug_top_distances(node **distances, int len) {
+void fill_bool_array(bool arr[], int len, bool value) {
   for (int i = 0; i < len; i++) {
-    node *n = distances[i];
-    printf("top distance between :(%li,%li,%li) & (%li,%li,%li) -> %f\n",
-           n->left->x, n->left->y, n->left->z, n->right->x, n->right->y,
-           n->right->z, n->distance);
+    arr[i] = value;
   }
 }
 
-void free_all_points(node *nodes[], int len) {
+void free_nodes(node **nodes, int len) {
   for (int i = 0; i < len; i++) {
-    free(nodes[i]->left);
-    free(nodes[i]->right);
+    free(nodes[i]);
   }
 
   free(nodes);
@@ -107,13 +125,43 @@ int compare_distances(const void *a, const void *b) {
   return 0;
 }
 
+int compare_group_size(const void *a, const void *b) {
+  const int ra = *(int const *)a;
+  const int rb = *(int const *)b;
+
+  if (ra < rb) {
+    return 1;
+  }
+  if (ra > rb) {
+    return -1;
+  }
+  return 0;
+}
+
+void update_affected_neighbours(point_group groups[], int len,
+                                int affected_group, int new_group,
+                                long groups_sizes[]) {
+
+  for (int i = 0; i < len; i++) {
+
+    point_group pg = groups[i];
+
+    if (pg.group == affected_group) {
+      groups_sizes[groups[i].group] = groups_sizes[groups[i].group] - 1;
+      groups[i].group = new_group;
+      groups_sizes[new_group] = groups_sizes[new_group] + 1;
+    }
+  }
+}
+
 long ex_8(array_string *result) {
 
-  node **nodes = malloc(result->length * sizeof(node *));
-  node **top_diffs = malloc(10 * sizeof(node *)); // update for real example
+  int cap = result->length;
+  node **nodes = malloc(cap * sizeof(node *));
   point_group groups[result->length];
+  int nodes_len = 0;
 
-  for (int i = 0; i < result->length - 1; i++) {
+  for (int i = 0; i < result->length; i++) {
     line_string *line = result->lines[i];
     point *first = extract_point(line, i);
     point_group pg = {first, 0};
@@ -126,28 +174,104 @@ long ex_8(array_string *result) {
       n->right = second;
       n->distance = calculate_distance(first, second);
 
-      nodes[i] = n;
+      nodes[nodes_len++] = n;
+
+      if (nodes_len == cap) {
+        cap = cap * 2;
+
+        nodes = realloc(nodes, cap * sizeof(node *));
+      }
     }
   }
-  debug_all_distances(nodes, result->length);
+  // debug_all_distances(nodes, nodes_len);
 
-  // qsort(nodes, result->length, sizeof(node *), compare_distances);
+  qsort(nodes, nodes_len, sizeof(node *), compare_distances);
 
-  for (int i = 0; i < 10; i++) {
-    node *cpy = malloc(sizeof(node));
-    cpy->distance = nodes[i]->distance;
-    cpy->left = nodes[i]->left;
-    cpy->right = nodes[i]->right;
-    top_diffs[i] = cpy;
+  nodes = realloc(nodes, MAX_LENGTH * sizeof(node *));
 
-    free(cpy);
+  //printf("Looking at top 10 distances\n");
+
+  //debug_all_distances(nodes, MAX_LENGTH);
+
+  int group_counter = 1;
+  long *groups_sizes = calloc(MAX_LENGTH, sizeof(int));
+
+  // debug_groups(groups, result->length);
+
+  for (int i = 0; i < MAX_LENGTH; i++) {
+    node *n = nodes[i];
+    point *pl = n->left;
+    point *pr = n->right;
+
+    int group_l = groups[pl->index].group;
+    int group_r = groups[pr->index].group;
+
+    if (group_l == 0 && group_r == 0) {
+      groups[pl->index].group = group_counter;
+      groups[pr->index].group = group_counter;
+
+      groups_sizes[group_counter] = 2;
+      group_counter++;
+
+    } else if (group_l == group_r) {
+      // ignore
+      continue;
+    } else if (group_l != 0 && group_r != 0) {
+
+      // put in the same group
+      if (group_l < group_r) {
+        groups_sizes[groups[pl->index].group] =
+            groups_sizes[groups[pl->index].group] + 1;
+
+        groups_sizes[groups[pr->index].group] =
+            groups_sizes[groups[pr->index].group] - 1;
+
+        groups[pl->index].group = group_l;
+        groups[pr->index].group = group_l;
+        // both nodes are seen
+
+        update_affected_neighbours(groups, result->length, group_r, group_l,
+                                   groups_sizes);
+      } else {
+        groups_sizes[groups[pr->index].group] =
+            groups_sizes[groups[pr->index].group] + 1;
+
+        groups_sizes[groups[pl->index].group] =
+            groups_sizes[groups[pl->index].group] - 1;
+
+        groups[pl->index].group = group_r;
+        groups[pr->index].group = group_r;
+
+        // both nodes are seen
+
+        update_affected_neighbours(groups, result->length, group_l, group_r,
+                                   groups_sizes);
+      }
+    } else {
+      // printf("current indexes: [%d,%d], for groups : [%d,%d]\n", pl->index,
+      //        pr->index, group_index_l, group_index_r);
+      // one of them is not assigned
+      int max_index = MAX(group_l, group_r);
+      // this will always be the correct group as the other is 0
+      groups[pl->index].group = max_index;
+      groups[pr->index].group = max_index;
+
+      groups_sizes[max_index] = groups_sizes[max_index] + 1;
+    }
   }
 
-  debug_groups(groups, result->length);
+  // debug_groups(groups, result->length);
 
-  debug_top_distances(top_diffs, 10);
+  qsort(groups_sizes, MAX_LENGTH, sizeof(long), compare_group_size);
 
-  free_all_points(top_diffs, result->length);
+  long multipler = 1;
 
-  return 0;
+  for (int i = 0; i < MAX_GROUPS; i++) {
+    multipler *= groups_sizes[i];
+  }
+
+  // debug_group_count(groups_sizes, MAX_LENGTH);
+  free_nodes(nodes, MAX_LENGTH);
+
+  return multipler;
 }

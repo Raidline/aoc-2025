@@ -4,8 +4,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define MAX(x, y) (((x) > (y)) ? (x) : (y))
-
 typedef unsigned long long u64;
 typedef unsigned __int128 u128;
 
