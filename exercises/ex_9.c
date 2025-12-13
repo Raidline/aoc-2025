@@ -83,6 +83,19 @@ int compare_areas(const void *a, const void *b) {
   return 0;
 }
 
+int compare_lines(const void *a, const void *b) {
+  const coord_point ra = *(coord_point const *)a;
+  const coord_point rb = *(coord_point const *)b;
+
+  if (ra.y < rb.y) {
+    return -1;
+  }
+  if (ra.y > rb.y) {
+    return 1;
+  }
+  return 0;
+}
+
 long ex_9_a(array_string *result) {
   int cap = result->length;
   rectangle **rectangles = malloc(cap * sizeof(rectangle *));
@@ -130,49 +143,14 @@ long ex_9_a(array_string *result) {
 }
 
 long ex_9_b(array_string *result) {
-  // todo: !improve this calculation! - not sure we can do it per line
-  boundarie_point boundaries[result->length];
-  for (int i = 0; i < result->length; i++) {
-    line_string *line = result->lines[i];
-    coord_point p1 = get_point(line);
-
-    for (int j = i + 1; j < result->length; j++) {
-      line_string *next_line = result->lines[j];
-      coord_point p2 = get_point(next_line);
-      if (p1.y != p2.y && p1.x == p2.x) {
-        long y = labs(p1.y - p2.y);
-        if (p1.x < p2.x) {
-          boundarie_point boundary = {p1.x, p2.x, y};
-
-          boundaries[p1.y] = boundary;
-        } else {
-          boundarie_point boundary = {p2.x, p1.x, y};
-          boundaries[p1.y] = boundary;
-        }
-      } else if (p1.y == p2.y) {
-        if (p1.x < p2.x) {
-          boundarie_point boundary = {p1.x, p2.x, p1.y};
-
-          boundaries[p1.y] = boundary;
-        } else {
-          boundarie_point boundary = {p2.x, p1.x, p1.y};
-          boundaries[p1.y] = boundary;
-        }
-      }
-    }
-  }
-
-  debug_bondaries(boundaries, result->length);
-
-  qsort(boundaries, result->length, sizeof(coord_point), compare_coords);
-
+  coord_point points[result->length];
   int cap = result->length;
   rectangle **rectangles = malloc(cap * sizeof(rectangle *));
   int points_len = 0;
-  for (int i = 0; i < result->length - 1; i++) {
+  for (int i = 0; i < result->length; i++) {
     line_string *line = result->lines[i];
-
     coord_point p1 = get_point(line);
+    points[i] = p1;
 
     for (int j = i + 1; j < result->length; j++) {
       line_string *next_line = result->lines[j];
@@ -198,9 +176,56 @@ long ex_9_b(array_string *result) {
       }
     }
   }
-
-  // qsort(rectangles, points_len, sizeof(rectangle *), compare_areas);
+  qsort(rectangles, points_len, sizeof(rectangle *), compare_areas);
   rectangles = realloc(rectangles, points_len * sizeof(rectangle *));
+  qsort(points, result->length, sizeof(coord_point), compare_lines);
+  // todo: !improve this calculation! - not sure we can do it per line
+  //
+  // todo: do all the area calculations at the same time, and then filter
+  boundarie_point
+      boundaries[points[result->length - 1].y]; // boundaries per line
+
+  for (int i = 0; i < points[result->length - 1].y; i++) {
+    boundarie_point p = {-1, -1, i};
+    boundaries[i] = p;
+  }
+
+  long last_line = 0;
+  for (int i = 0; i < result->length - 1; i++) {
+    coord_point p1 = points[i];
+    coord_point p2 = points[i + 1];
+
+    while (p2.y == p1.y) {
+      if (last_line != 0) { // do the missing line
+        long missing_line = p1.y - last_line;
+
+        boundarie_point curr = boundaries[missing_line];
+        // todo: to the calculation for the missing line using the columns
+        long min_x = MIN(p1.x, p2.x);
+        long calculated_min = curr.x1 == -1 ? min_x : MIN(min_x, curr.x1);
+        long max_x = MAX(p1.x, p1.x);
+        long calculated_max = curr.x2 == -1 ? max_x : MAX(max_x, curr.x2);
+        curr.x1 = calculated_min;
+        curr.x2 = calculated_max;
+      }
+      // adapt the calculation for the line
+      boundarie_point curr = boundaries[p1.y];
+      long min_x = MIN(p1.x, p2.x);
+      long calculated_min = curr.x1 == -1 ? min_x : MIN(min_x, curr.x1);
+      long max_x = MAX(p1.x, p1.x);
+      long calculated_max = curr.x2 == -1 ? max_x : MAX(max_x, curr.x2);
+      curr.x1 = calculated_min;
+      curr.x2 = calculated_max;
+    }
+
+    last_line = p1.y;
+  }
+
+  debug_bondaries(boundaries, result->length);
+
+  qsort(boundaries, result->length, sizeof(coord_point), compare_coords);
+
+  // todo: filter for the boundaries now
 
   // debug_rectangles(rectangles, points_len);
 
