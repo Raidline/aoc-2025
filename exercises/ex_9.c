@@ -176,7 +176,6 @@ long ex_9_b(array_string *result) {
       }
     }
   }
-  qsort(rectangles, points_len, sizeof(rectangle *), compare_areas);
   rectangles = realloc(rectangles, points_len * sizeof(rectangle *));
   qsort(points, result->length, sizeof(coord_point), compare_lines);
   // todo: !improve this calculation! - not sure we can do it per line
@@ -229,6 +228,7 @@ long ex_9_b(array_string *result) {
 
   // debug_rectangles(rectangles, points_len);
 
+  qsort(rectangles, points_len, sizeof(rectangle *), compare_areas);
   long longest_area = rectangles[0]->area;
 
   free_rectanges(rectangles, points_len);
