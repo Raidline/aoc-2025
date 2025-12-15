@@ -8,11 +8,15 @@ typedef struct coord_point {
   long y;
 } coord_point;
 
-typedef struct boundarie_point {
-  long x1;
-  long x2;
-  long y;
-} boundarie_point;
+typedef struct {
+  long y1;
+  long y2;
+} interval;
+
+typedef struct {
+  interval *intervals;
+  int count;
+} interval_list;
 
 typedef struct rectangle {
   coord_point p1;
@@ -30,10 +34,9 @@ void free_rectanges(rectangle **rectangles, int len) {
   free(rectangles);
 }
 
-void debug_bondaries(boundarie_point boundaries[], int len) {
+void debug_points(coord_point points[], int len) {
   for (int i = 0; i < len; i++) {
-    boundarie_point p = boundaries[i];
-    printf("boundarie of x: >[%li] & <[%li], y:[%li]\n", p.x1, p.x2, p.y);
+    printf("point : [x:%li, y:%li]\n", points[i].x, points[i].y);
   }
 }
 
@@ -47,6 +50,115 @@ void debug_rectangles(rectangle **rectangles, int len) {
   }
 }
 
+void debug_scanlines(long min_x, long max_x, interval_list *scanlines) {
+  // Print scanlines
+  for (long x = min_x; x <= max_x; x++) {
+    interval_list *sl = &scanlines[x - min_x];
+    printf("x=%ld: ", x);
+    for (int i = 0; i < sl->count; i++) {
+      printf("[%ld,%ld] ", sl->intervals[i].y1, sl->intervals[i].y2);
+    }
+    printf("\n");
+  }
+}
+
+void polygon_bounds(coord_point *poly, int n, long *min_x, long *max_x) {
+  *min_x = poly[0].x;
+  *max_x = poly[0].x;
+
+  for (int i = 1; i < n; i++) {
+    if (poly[i].x < *min_x)
+      *min_x = poly[i].x;
+    if (poly[i].x > *max_x)
+      *max_x = poly[i].x;
+  }
+}
+
+int cmp_interval(const void *a, const void *b) {
+  return ((interval *)a)->y1 - ((interval *)b)->y1;
+}
+
+void add_interval(interval_list *list, long y1, long y2) {
+  list->intervals =
+      realloc(list->intervals, sizeof(interval) * (list->count + 1));
+  list->intervals[list->count++] = (interval){y1, y2};
+}
+
+void build_scanlines(coord_point *poly, int n, interval_list *scanlines,
+                     long min_x, long max_x) {
+  int width = max_x - min_x + 1;
+
+  for (int i = 0; i < width; i++) {
+    scanlines[i].intervals = NULL;
+    scanlines[i].count = 0;
+  }
+
+  for (int i = 0; i < n; i++) {
+    coord_point a = poly[i];
+    coord_point b = poly[(i + 1) % n];
+
+    // Skip horizontal edges
+    if (a.y == b.y) {
+      continue;
+    }
+
+    // Ensure a.y < b.y
+    if (a.y > b.y) {
+      coord_point tmp = a;
+      a = b;
+      b = tmp;
+    }
+
+    // For every x column crossed by the edge
+    long x_start = MIN(a.x, b.x);
+    long x_end = MAX(a.x, b.x);
+
+    for (long x = x_start; x <= x_end; x++) {
+      if (x < min_x || x > max_x)
+        continue;
+
+      // Linear interpolation to find intersection Y
+      double t = (double)(x - a.x) / (double)(b.x - a.x);
+      long y = (long)(a.y + t * (b.y - a.y));
+
+      int idx = x - min_x;
+      add_interval(&scanlines[idx], y, y);
+    }
+  }
+}
+
+void finalize_scanlines(interval_list *scanlines, long min_x, long max_x) {
+  int width = max_x - min_x + 1;
+
+  for (int i = 0; i < width; i++) {
+    interval_list *sl = &scanlines[i];
+
+    if (sl->count < 2) {
+      continue;
+    }
+
+    // Sort by y
+    qsort(sl->intervals, sl->count, sizeof(interval), cmp_interval);
+
+    interval *inside = NULL;
+    int inside_count = 0;
+
+    for (int j = 0; j + 1 < sl->count; j += 2) {
+      long y1 = sl->intervals[j].y1;
+      long y2 = sl->intervals[j + 1].y1;
+
+      if (y1 < y2) {
+        inside = realloc(inside, sizeof(interval) * (inside_count + 1));
+        inside[inside_count++] = (interval){y1, y2};
+      }
+    }
+
+    free(sl->intervals);
+    sl->intervals = inside;
+    sl->count = inside_count;
+  }
+}
+
 coord_point get_point(line_string *line) {
   long x_value = get_value(line->array_ptr, line->str_len, 0);
   int split_idx = index_of(line->array_ptr, ',', 0, line->str_len);
@@ -55,19 +167,6 @@ coord_point get_point(line_string *line) {
   coord_point p = {x_value, y_value};
 
   return p;
-}
-
-int compare_coords(const void *a, const void *b) {
-  const boundarie_point ra = *(boundarie_point const *)a;
-  const boundarie_point rb = *(boundarie_point const *)b;
-
-  if (ra.y < rb.y) {
-    return -1;
-  }
-  if (ra.y > rb.y) {
-    return 1;
-  }
-  return 0;
 }
 
 int compare_areas(const void *a, const void *b) {
@@ -94,6 +193,64 @@ int compare_lines(const void *a, const void *b) {
     return 1;
   }
   return 0;
+}
+
+int compare_coords(const void *a, const void *b) {
+  const coord_point ra = *(coord_point const *)a;
+  const coord_point rb = *(coord_point const *)b;
+
+  if (ra.y < rb.y) {
+    return -1;
+  }
+  if (ra.y > rb.y) {
+    return 1;
+  }
+  return 0;
+}
+
+int rectangle_fits_polygon(rectangle *r, interval_list *scanlines) {
+  long x1 = r->p1.x;
+  long x2 = r->p2.x;
+  long y1 = r->p1.y;
+  long y2 = r->p2.y;
+
+  for (long x = x1; x <= x2; x++) {
+    interval_list *list = &scanlines[x];
+    int covered = 0;
+
+    if (list->count == 0) {
+      return 0;
+    }
+
+    for (int i = 0; i < list->count; i++) {
+      interval *iv = &list->intervals[i];
+
+      if (y1 >= iv->y1 && y2 <= iv->y2) {
+        covered = 1;
+        break;
+      }
+    }
+
+    if (!covered) {
+      return 0;
+    }
+  }
+
+  return 1;
+}
+
+rectangle *rectangle_inside(rectangle **rects, int rect_count,
+                            interval_list *scanlines) {
+
+  for (int i = 0; i < rect_count; i++) {
+    if (!rectangle_fits_polygon(rects[i], scanlines)) {
+      continue;
+    }
+
+    return rects[i];
+  }
+
+  return NULL;
 }
 
 long ex_9_a(array_string *result) {
@@ -147,6 +304,7 @@ long ex_9_b(array_string *result) {
   int cap = result->length;
   rectangle **rectangles = malloc(cap * sizeof(rectangle *));
   int points_len = 0;
+
   for (int i = 0; i < result->length; i++) {
     line_string *line = result->lines[i];
     coord_point p1 = get_point(line);
@@ -177,59 +335,27 @@ long ex_9_b(array_string *result) {
     }
   }
   rectangles = realloc(rectangles, points_len * sizeof(rectangle *));
-  qsort(points, result->length, sizeof(coord_point), compare_lines);
-  // todo: !improve this calculation! - not sure we can do it per line
-  //
-  // todo: do all the area calculations at the same time, and then filter
-  boundarie_point
-      boundaries[points[result->length - 1].y]; // boundaries per line
 
-  for (int i = 0; i < points[result->length - 1].y; i++) {
-    boundarie_point p = {-1, -1, i};
-    boundaries[i] = p;
-  }
+  int n = sizeof(points) / sizeof(points[0]);
 
-  long last_line = 0;
-  for (int i = 0; i < result->length - 1; i++) {
-    coord_point p1 = points[i];
-    coord_point p2 = points[i + 1];
+  long min_x, max_x;
+  polygon_bounds(points, n, &min_x, &max_x);
 
-    while (p2.y == p1.y) {
-      if (last_line != 0) { // do the missing line
-        long missing_line = p1.y - last_line;
+  int width = max_x - min_x + 1;
+  interval_list *scanlines = calloc(width, sizeof(interval_list));
 
-        boundarie_point curr = boundaries[missing_line];
-        // todo: to the calculation for the missing line using the columns
-        long min_x = MIN(p1.x, p2.x);
-        long calculated_min = curr.x1 == -1 ? min_x : MIN(min_x, curr.x1);
-        long max_x = MAX(p1.x, p1.x);
-        long calculated_max = curr.x2 == -1 ? max_x : MAX(max_x, curr.x2);
-        curr.x1 = calculated_min;
-        curr.x2 = calculated_max;
-      }
-      // adapt the calculation for the line
-      boundarie_point curr = boundaries[p1.y];
-      long min_x = MIN(p1.x, p2.x);
-      long calculated_min = curr.x1 == -1 ? min_x : MIN(min_x, curr.x1);
-      long max_x = MAX(p1.x, p1.x);
-      long calculated_max = curr.x2 == -1 ? max_x : MAX(max_x, curr.x2);
-      curr.x1 = calculated_min;
-      curr.x2 = calculated_max;
-    }
+  build_scanlines(points, n, scanlines, min_x, max_x);
+  finalize_scanlines(scanlines, min_x, max_x);
 
-    last_line = p1.y;
-  }
+  debug_scanlines(min_x, max_x, scanlines);
 
-  debug_bondaries(boundaries, result->length);
-
-  qsort(boundaries, result->length, sizeof(coord_point), compare_coords);
-
+  debug_points(points, result->length);
   // todo: filter for the boundaries now
 
   // debug_rectangles(rectangles, points_len);
 
   qsort(rectangles, points_len, sizeof(rectangle *), compare_areas);
-  long longest_area = rectangles[0]->area;
+  long longest_area = rectangle_inside(rectangles, points_len, scanlines)->area;
 
   free_rectanges(rectangles, points_len);
 
