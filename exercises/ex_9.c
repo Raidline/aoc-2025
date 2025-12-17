@@ -84,6 +84,12 @@ void add_interval(interval_list *list, long y1, long y2) {
   list->intervals[list->count++] = (interval){y1, y2};
 }
 
+void add_crossing(interval_list *list, long y) {
+  list->intervals =
+      realloc(list->intervals, sizeof(interval) * (list->count + 1));
+  list->intervals[list->count++] = (interval){y, y};
+}
+
 void build_scanlines(coord_point *poly, int n, interval_list *scanlines,
                      long min_x, long max_x) {
   int width = max_x - min_x + 1;
@@ -97,10 +103,9 @@ void build_scanlines(coord_point *poly, int n, interval_list *scanlines,
     coord_point a = poly[i];
     coord_point b = poly[(i + 1) % n];
 
-    // Skip horizontal edges
-    if (a.y == b.y) {
+    // Ignore horizontal edges
+    if (a.y == b.y)
       continue;
-    }
 
     // Ensure a.y < b.y
     if (a.y > b.y) {
@@ -109,20 +114,23 @@ void build_scanlines(coord_point *poly, int n, interval_list *scanlines,
       b = tmp;
     }
 
-    // For every x column crossed by the edge
-    long x_start = MIN(a.x, b.x);
-    long x_end = MAX(a.x, b.x);
+    // Iterate over x columns the edge crosses
+    long x_start = MAX(min_x, MIN(a.x, b.x));
+    long x_end = MIN(max_x, MAX(a.x, b.x));
 
     for (long x = x_start; x <= x_end; x++) {
-      if (x < min_x || x > max_x)
-        continue;
+      // Edge must cross this x
+      if (a.x == b.x) {
+        // vertical edge → single crossing
+        add_crossing(&scanlines[x - min_x], a.y);
+      } else {
+        double t = (double)(x - a.x) / (double)(b.x - a.x);
+        if (t < 0.0 || t >= 1.0)
+          continue;
 
-      // Linear interpolation to find intersection Y
-      double t = (double)(x - a.x) / (double)(b.x - a.x);
-      long y = (long)(a.y + t * (b.y - a.y));
-
-      int idx = x - min_x;
-      add_interval(&scanlines[idx], y, y);
+        double y = a.y + t * (b.y - a.y);
+        add_crossing(&scanlines[x - min_x], (long)y);
+      }
     }
   }
 }
@@ -133,11 +141,9 @@ void finalize_scanlines(interval_list *scanlines, long min_x, long max_x) {
   for (int i = 0; i < width; i++) {
     interval_list *sl = &scanlines[i];
 
-    if (sl->count < 2) {
+    if (sl->count < 2)
       continue;
-    }
 
-    // Sort by y
     qsort(sl->intervals, sl->count, sizeof(interval), cmp_interval);
 
     interval *inside = NULL;
@@ -208,19 +214,19 @@ int compare_coords(const void *a, const void *b) {
   return 0;
 }
 
-int rectangle_fits_polygon(rectangle *r, interval_list *scanlines) {
+int rectangle_fits_polygon(rectangle *r, interval_list *scanlines, long min_x) {
   long x1 = r->p1.x;
   long x2 = r->p2.x;
   long y1 = r->p1.y;
   long y2 = r->p2.y;
 
   for (long x = x1; x <= x2; x++) {
-    interval_list *list = &scanlines[x];
-    int covered = 0;
+    interval_list *list = &scanlines[x - min_x];
 
-    if (list->count == 0) {
+    if (list->count == 0)
       return 0;
-    }
+
+    int covered = 0;
 
     for (int i = 0; i < list->count; i++) {
       interval *iv = &list->intervals[i];
@@ -231,20 +237,28 @@ int rectangle_fits_polygon(rectangle *r, interval_list *scanlines) {
       }
     }
 
-    if (!covered) {
+    if (!covered)
       return 0;
-    }
   }
 
   return 1;
 }
 
 rectangle *rectangle_inside(rectangle **rects, int rect_count,
-                            interval_list *scanlines) {
+                            interval_list *scanlines, long min_x) {
+
+  rectangle *best = NULL;
+  long best_area = 0;
 
   for (int i = 0; i < rect_count; i++) {
-    if (!rectangle_fits_polygon(rects[i], scanlines)) {
+    rectangle *r = rects[i];
+    if (rectangle_fits_polygon(r, scanlines, min_x) == 0) {
       continue;
+    }
+
+    if (best == NULL || r->area > best_area) {
+      best = r;
+      best_area = r->area;
     }
 
     return rects[i];
@@ -336,15 +350,13 @@ long ex_9_b(array_string *result) {
   }
   rectangles = realloc(rectangles, points_len * sizeof(rectangle *));
 
-  int n = sizeof(points) / sizeof(points[0]);
-
   long min_x, max_x;
-  polygon_bounds(points, n, &min_x, &max_x);
+  polygon_bounds(points, result->length, &min_x, &max_x);
 
   int width = max_x - min_x + 1;
   interval_list *scanlines = calloc(width, sizeof(interval_list));
 
-  build_scanlines(points, n, scanlines, min_x, max_x);
+  build_scanlines(points, result->length, scanlines, min_x, max_x);
   finalize_scanlines(scanlines, min_x, max_x);
 
   debug_scanlines(min_x, max_x, scanlines);
@@ -355,7 +367,8 @@ long ex_9_b(array_string *result) {
   // debug_rectangles(rectangles, points_len);
 
   qsort(rectangles, points_len, sizeof(rectangle *), compare_areas);
-  long longest_area = rectangle_inside(rectangles, points_len, scanlines)->area;
+  long longest_area =
+      rectangle_inside(rectangles, points_len, scanlines, min_x)->area;
 
   free_rectanges(rectangles, points_len);
 
