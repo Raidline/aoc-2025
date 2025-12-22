@@ -1,7 +1,13 @@
 #include "ex_9.h"
 #include "../core/utils.h"
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
+
+typedef struct {
+  long min_y;
+  long max_y;
+} column_span;
 
 typedef struct coord_point {
   long x;
@@ -25,6 +31,14 @@ typedef struct rectangle {
   long height;
   long area;
 } rectangle;
+
+void free_scanlines(interval_list *scanlines, int len) {
+  for (int i = 0; i < len; i++) {
+    free(scanlines[i].intervals);
+  }
+
+  free(scanlines);
+}
 
 void free_rectanges(rectangle **rectangles, int len) {
   for (int i = 0; i < len; i++) {
@@ -103,35 +117,20 @@ void build_scanlines(coord_point *poly, int n, interval_list *scanlines,
     coord_point a = poly[i];
     coord_point b = poly[(i + 1) % n];
 
-    // Ignore horizontal edges
-    if (a.y == b.y)
+    // Only vertical edges contribute
+    if (a.x != b.x)
       continue;
 
-    // Ensure a.y < b.y
-    if (a.y > b.y) {
-      coord_point tmp = a;
-      a = b;
-      b = tmp;
-    }
+    long x = a.x;
+    if (x < min_x || x > max_x)
+      continue;
 
-    // Iterate over x columns the edge crosses
-    long x_start = MAX(min_x, MIN(a.x, b.x));
-    long x_end = MIN(max_x, MAX(a.x, b.x));
+    long y1 = MIN(a.y, b.y);
+    long y2 = MAX(a.y, b.y);
 
-    for (long x = x_start; x <= x_end; x++) {
-      // Edge must cross this x
-      if (a.x == b.x) {
-        // vertical edge → single crossing
-        add_crossing(&scanlines[x - min_x], a.y);
-      } else {
-        double t = (double)(x - a.x) / (double)(b.x - a.x);
-        if (t < 0.0 || t >= 1.0)
-          continue;
-
-        double y = a.y + t * (b.y - a.y);
-        add_crossing(&scanlines[x - min_x], (long)y);
-      }
-    }
+    // Add BOTH endpoints as crossings
+    add_crossing(&scanlines[x - min_x], y1);
+    add_crossing(&scanlines[x - min_x], y2);
   }
 }
 
@@ -165,6 +164,25 @@ void finalize_scanlines(interval_list *scanlines, long min_x, long max_x) {
   }
 }
 
+void fill_scanline_gaps(interval_list *scanlines, long min_x, long max_x) {
+  int width = max_x - min_x + 1;
+
+  interval_list *last = NULL;
+
+  for (int i = 0; i < width; i++) {
+    if (scanlines[i].count > 0) {
+      last = &scanlines[i];
+    } else if (last != NULL) {
+      // copy previous interior
+      scanlines[i].intervals = malloc(sizeof(interval) * last->count);
+      scanlines[i].count = last->count;
+
+      for (int j = 0; j < last->count; j++)
+        scanlines[i].intervals[j] = last->intervals[j];
+    }
+  }
+}
+
 coord_point get_point(line_string *line) {
   long x_value = get_value(line->array_ptr, line->str_len, 0);
   int split_idx = index_of(line->array_ptr, ',', 0, line->str_len);
@@ -188,56 +206,39 @@ int compare_areas(const void *a, const void *b) {
   return 0;
 }
 
-int compare_lines(const void *a, const void *b) {
-  const coord_point ra = *(coord_point const *)a;
-  const coord_point rb = *(coord_point const *)b;
+void build_column_spans(interval_list *scanlines, long min_x, long max_x,
+                        column_span *cols) {
+  int width = max_x - min_x + 1;
 
-  if (ra.y < rb.y) {
-    return -1;
-  }
-  if (ra.y > rb.y) {
-    return 1;
-  }
-  return 0;
-}
+  for (int i = 0; i < width; i++) {
+    cols[i].min_y = LONG_MAX;
+    cols[i].max_y = LONG_MIN;
 
-int compare_coords(const void *a, const void *b) {
-  const coord_point ra = *(coord_point const *)a;
-  const coord_point rb = *(coord_point const *)b;
-
-  if (ra.y < rb.y) {
-    return -1;
+    for (int j = 0; j < scanlines[i].count; j++) {
+      interval *iv = &scanlines[i].intervals[j];
+      cols[i].min_y = MIN(cols[i].min_y, iv->y1);
+      cols[i].max_y = MAX(cols[i].max_y, iv->y2);
+    }
   }
-  if (ra.y > rb.y) {
-    return 1;
-  }
-  return 0;
 }
 
 int rectangle_fits_polygon(rectangle *r, interval_list *scanlines, long min_x) {
-  long x1 = r->p1.x;
-  long x2 = r->p2.x;
-  long y1 = r->p1.y;
-  long y2 = r->p2.y;
 
-  for (long x = x1; x <= x2; x++) {
-    interval_list *list = &scanlines[x - min_x];
+  for (long x = r->p1.x; x < r->p2.x; x++) {
+    interval_list *col = &scanlines[x - min_x];
+    int ok = 0;
 
-    if (list->count == 0)
-      return 0;
+    for (int i = 0; i < col->count; i++) {
+      interval *iv = &col->intervals[i];
 
-    int covered = 0;
-
-    for (int i = 0; i < list->count; i++) {
-      interval *iv = &list->intervals[i];
-
-      if (y1 >= iv->y1 && y2 <= iv->y2) {
-        covered = 1;
+      /* boundary-inclusive */
+      if (r->p1.y >= iv->y1 && r->p2.y <= iv->y2 + 1) {
+        ok = 1;
         break;
       }
     }
 
-    if (!covered)
+    if (!ok)
       return 0;
   }
 
@@ -246,25 +247,20 @@ int rectangle_fits_polygon(rectangle *r, interval_list *scanlines, long min_x) {
 
 rectangle *rectangle_inside(rectangle **rects, int rect_count,
                             interval_list *scanlines, long min_x) {
-
   rectangle *best = NULL;
   long best_area = 0;
 
   for (int i = 0; i < rect_count; i++) {
-    rectangle *r = rects[i];
-    if (rectangle_fits_polygon(r, scanlines, min_x) == 0) {
+    if (!rectangle_fits_polygon(rects[i], scanlines, min_x))
       continue;
-    }
 
-    if (best == NULL || r->area > best_area) {
-      best = r;
-      best_area = r->area;
+    if (rects[i]->area > best_area) {
+      best = rects[i];
+      best_area = rects[i]->area;
     }
-
-    return rects[i];
   }
 
-  return NULL;
+  return best;
 }
 
 long ex_9_a(array_string *result) {
@@ -329,16 +325,20 @@ long ex_9_b(array_string *result) {
 
       coord_point p2 = get_point(next_line);
 
-      // always sum 1 for the diff as the self also counts;
-      long rect_length = labs(p1.x - p2.x) + 1;
-      long rect_height = labs(p1.y - p2.y) + 1;
-
       rectangle *rect = malloc(sizeof(rectangle));
-      rect->p1 = p1;
-      rect->p2 = p2;
-      rect->height = rect_height;
-      rect->length = rect_length;
-      rect->area = rect_height * rect_length;
+      long x1 = MIN(p1.x, p2.x);
+      long x2 = MAX(p1.x, p2.x) + 1; // +1 ONLY here
+      long y1 = MIN(p1.y, p2.y);
+      long y2 = MAX(p1.y, p2.y) + 1;
+
+      coord_point rectp1 = {x1, y1};
+      coord_point rectp2 = {x2, y2};
+
+      rect->p1 = rectp1;
+      rect->p2 = rectp2;
+      rect->length = x2 - x1;
+      rect->height = y2 - y1;
+      rect->area = rect->length * rect->height;
 
       rectangles[points_len++] = rect;
 
@@ -354,23 +354,25 @@ long ex_9_b(array_string *result) {
   polygon_bounds(points, result->length, &min_x, &max_x);
 
   int width = max_x - min_x + 1;
+
   interval_list *scanlines = calloc(width, sizeof(interval_list));
+  column_span *cols = malloc(width * sizeof(column_span));
 
   build_scanlines(points, result->length, scanlines, min_x, max_x);
   finalize_scanlines(scanlines, min_x, max_x);
+  fill_scanline_gaps(scanlines, min_x, max_x);
+
+  build_column_spans(scanlines, min_x, max_x, cols);
 
   debug_scanlines(min_x, max_x, scanlines);
 
-  debug_points(points, result->length);
-  // todo: filter for the boundaries now
+  rectangle *best = rectangle_inside(rectangles, points_len, scanlines, min_x);
 
-  // debug_rectangles(rectangles, points_len);
-
-  qsort(rectangles, points_len, sizeof(rectangle *), compare_areas);
-  long longest_area =
-      rectangle_inside(rectangles, points_len, scanlines, min_x)->area;
+  long longest_area = best ? best->area : 0;
 
   free_rectanges(rectangles, points_len);
+  free_scanlines(scanlines, width);
+  free(cols);
 
   return longest_area;
 }
